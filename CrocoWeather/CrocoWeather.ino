@@ -38,6 +38,9 @@ uint32_t soundStarted=0;
 uint16_t soundDuration=0;
 uint32_t chewStart=0;
 bool chewing=false;
+bool hiccups=false;
+uint32_t hiccupStarted=0;
+uint8_t lastHiccupBeat=0;
 uint8_t eaten=0; // 0 laptop, 1 phone
 float temperature=0, humidity=0, minimumT=0, maximumT=0;
 
@@ -65,7 +68,7 @@ void serviceSound(uint32_t now) {
 }
 void enterMode(Mode next, uint32_t now) {
   stopSound();
-  mode=next; chewing=false; petTick=now;
+  mode=next; chewing=false; hiccups=false; petTick=now;
   // Do not force early reads when switching modes repeatedly.
 }
 void sound(uint16_t hz, uint16_t duration) {
@@ -104,17 +107,38 @@ uint8_t addCapped(uint8_t value, uint8_t amount) {
   return value>100-amount ? 100 : value+amount;
 }
 void petAction(uint32_t now) {
+  if(chewing) return; // Finish one meal before accepting another.
   if(action<2) {
     sleeping=false; eaten=action; chewing=true; chewStart=now;
-    fullness=addCapped(fullness,action==0?25:15);
-    happiness=addCapped(happiness,8);
+    // Laptop: hearty meal. Phone: small snack with a bigger joy bonus.
+    const uint8_t foodGain=action==0?30:12;
+    const bool tooMuch=uint16_t(fullness)+foodGain>100;
+    fullness=addCapped(fullness,foodGain);
+    if(tooMuch) {
+      happiness=happiness>5?happiness-5:0;
+      hiccups=true; hiccupStarted=now; lastHiccupBeat=0;
+    } else happiness=addCapped(happiness,action==0?5:12);
     sound(action==0?660:880,130);
   } else {
-    sleeping=!sleeping;
+    sleeping=!sleeping; hiccups=false;
     sound(sleeping?330:990,100);
   }
 }
+void updateHiccups(uint32_t now) {
+  if(!hiccups || mode!=PET) return;
+  const uint32_t elapsed=uint32_t(now-hiccupStarted);
+  if(elapsed>=10000UL) {hiccups=false; return;}
+  // Let the meal animation finish, then hiccup every 1.2 seconds.
+  if(elapsed>=2000UL) {
+    const uint8_t beat=1+(elapsed-2000UL)/1200UL;
+    if(beat!=lastHiccupBeat) {
+      lastHiccupBeat=beat;
+      sound(220,65);
+    }
+  }
+}
 void update(uint32_t now) {
+  updateHiccups(now);
   readButtons(now);
   // Reserve this combination; no actions while held or while releasing it.
   if(keys[0].down && keys[2].down) {
@@ -169,10 +193,14 @@ void crocodile(uint32_t now) {
   const uint32_t elapsed=chewing ? uint32_t(now-chewStart) : 0;
   const bool chewingPhase=chewing && elapsed>=600 && elapsed<1600;
   const bool mouthOpen=chewingPhase && ((elapsed/140)%2==0);
+  const bool hungry=fullness<25 && !sleeping && !chewing;
+  const uint32_t hiccupAge=uint32_t(now-hiccupStarted);
+  const bool hic=hiccups && !chewing && hiccupAge>=2000 &&
+                 ((hiccupAge-2000)%1200)<240;
   const bool blink=sleeping || (now%4200>3980);
   const int8_t step=(now/180)%4;
   const int16_t x=sleeping?0:(chewing?2:(step<2?0:2));
-  const int16_t y=25+(sleeping?((now/900)%2):((now/260)%2));
+  const int16_t y=25+(sleeping?((now/900)%2):((now/260)%2))-(hic?3:0);
   // Wagging tail and alternating feet give a little walk cycle.
   oled.drawTriangle(x+13,y+9+(step<2?0:3),x+35,y+6,x+35,y+20);
   oled.drawRBox(x+30,y+3,42,20,6);
@@ -190,7 +218,14 @@ void crocodile(uint32_t now) {
   } else {
     oled.drawBox(x+62,y-1,5,5); oled.drawBox(x+72,y,4,4);
     oled.setDrawColor(1);
-    oled.drawBox(x+65,y,2,3); oled.drawBox(x+74,y+1,2,2);
+    // Hungry eyes turn down toward LAPTOP (left) or PHONE (centre).
+    if(hungry) {
+      const uint8_t gaze=action==1?2:0;
+      oled.drawBox(x+62+gaze,y+2,2,2);
+      oled.drawBox(x+72+gaze,y+2,2,2);
+    } else {
+      oled.drawBox(x+65,y,2,3); oled.drawBox(x+74,y+1,2,2);
+    }
     oled.setDrawColor(0);
   }
   if(mouthOpen) oled.drawTriangle(x+73,y+11,x+102,y+6,x+102,y+18);
@@ -215,7 +250,12 @@ void crocodile(uint32_t now) {
         oled.drawBox(104+i*6,37+((elapsed/100+i*3)%9),2,2);
     }
     if(elapsed>=1600) oled.drawStr(103,27,"YUM!");
-  } else if(fullness<25) oled.drawStr(104,27,"FOOD");
+  } else if(hic) oled.drawStr(104,25,"HIC!");
+  else if(hungry) {
+    oled.drawStr(103,23,"FOOD");
+    const uint8_t target=action==1?59:18;
+    oled.drawTriangle(target-3,46,target+3,46,target,50);
+  }
   else if(happiness>70 && (now/1500)%2) oled.drawStr(107,25,"<3");
 }
 void drawWeather(uint32_t now) {
