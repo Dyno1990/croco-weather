@@ -2,6 +2,14 @@
 
 [English](#english) | [Български](#български)
 
+**[Download the assembly guide / Изтегли ръководството за сглобяване (PDF, EN + BG)](output/pdf/CrocoWeather-Assembly-Guide-EN-BG.pdf)**
+
+Parts, breadboard placement, wiring, Arduino IDE setup, and troubleshooting - English first, then Bulgarian.
+
+Части, поставяне на бредборда, свързване, настройки на Arduino IDE и диагностика - първо на английски, после на български.
+
+[![Wiring preview / Преглед на свързването](docs/assembly-wiring-preview.png)](output/pdf/CrocoWeather-Assembly-Guide-EN-BG.pdf)
+
 ## English
 
 A combined weather station and crocodile virtual pet for the Arduino Nano ATmega328P with a monochrome 0.96″ 128×64 SSD1306 I²C OLED display.
@@ -17,6 +25,8 @@ A combined weather station and crocodile virtual pet for the Arduino Nano ATmega
 - Return to the menu by holding the left and right buttons together for 1.5 seconds.
 
 ### Files
+
+- [Bilingual assembly guide (PDF)](output/pdf/CrocoWeather-Assembly-Guide-EN-BG.pdf) - illustrated assembly and first checks, English and Bulgarian.
 
 - `CrocoWeather/CrocoWeather.ino` — the main application.
 - `CrocoWeather/README_BG.md` — detailed instructions in Bulgarian.
@@ -83,6 +93,8 @@ Continuous buzzer noise has been reported. The application starts with SOUND OFF
 - Връщане в менюто: задържане на левия и десния бутон за 1,5 секунди.
 
 ### Файлове
+
+- [Двуезично ръководство за сглобяване (PDF)](output/pdf/CrocoWeather-Assembly-Guide-EN-BG.pdf) - илюстрирани инструкции и първи проверки на английски и български.
 
 - `CrocoWeather/CrocoWeather.ino` — основното приложение.
 - `CrocoWeather/README_BG.md` — подробни инструкции.
